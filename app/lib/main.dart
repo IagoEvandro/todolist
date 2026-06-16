@@ -37,6 +37,8 @@ class _MinhaTelaPrincipalState extends State<MinhaTelaPrincipal> {
 
   final TextEditingController _controleTexto = TextEditingController();
 
+  bool _botaoAdicionarComHover = false;
+
   void abrirJanelaCadastro() {
     showDialog(
       context: context,
@@ -93,12 +95,22 @@ class _MinhaTelaPrincipalState extends State<MinhaTelaPrincipal> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('MyTask App'),
+      appBar: BarraSuperiorComBotaoAdicionar(
+        comHoverNoBotao: _botaoAdicionarComHover,
 
-        backgroundColor: Colors.brown,
+        aoEntrarNoBotao: () {
+          setState(() {
+            _botaoAdicionarComHover = true;
+          });
+        },
 
-        foregroundColor: const Color.fromARGB(255, 219, 153, 129),
+        aoSairDoBotao: () {
+          setState(() {
+            _botaoAdicionarComHover = false;
+          });
+        },
+
+        aoPressionarBotao: abrirJanelaCadastro,
       ),
 
       body: tarefas.isEmpty
@@ -162,14 +174,156 @@ class _MinhaTelaPrincipalState extends State<MinhaTelaPrincipal> {
                 );
               },
             ),
+    );
+  }
+}
 
-      floatingActionButton: FloatingActionButton(
-        onPressed: abrirJanelaCadastro, // Chama a função que criamos
+class BarraSuperiorComBotaoAdicionar extends StatelessWidget
+    implements PreferredSizeWidget {
+  const BarraSuperiorComBotaoAdicionar({
+    super.key,
+    required this.comHoverNoBotao,
+    required this.aoEntrarNoBotao,
+    required this.aoSairDoBotao,
+    required this.aoPressionarBotao,
+  });
 
-        backgroundColor: Colors.brown,
+  final bool comHoverNoBotao;
 
-        child: const Icon(Icons.add, color: Colors.white),
+  final VoidCallback aoEntrarNoBotao;
+
+  final VoidCallback aoSairDoBotao;
+
+  final VoidCallback aoPressionarBotao;
+
+  static const double _alturaBarra = 104;
+
+  @override
+  Size get preferredSize => const Size.fromHeight(_alturaBarra);
+
+  @override
+  Widget build(BuildContext context) {
+    const Color corPrincipal = Colors.brown;
+    const Color corTexto = Color.fromARGB(255, 219, 153, 129);
+    final double espacoSuperiorSeguro = MediaQuery.paddingOf(context).top;
+    final double alturaConteudo = preferredSize.height - espacoSuperiorSeguro;
+    final double centroVerticalConteudo =
+        espacoSuperiorSeguro + (alturaConteudo / 2);
+    final double centroVerticalElementos = centroVerticalConteudo - 14;
+    final double topoTitulo = centroVerticalElementos - 14;
+    final double topoBotao =
+        centroVerticalElementos - 30 + (comHoverNoBotao ? 8 : 0);
+
+    return Material(
+      color: Colors.transparent,
+      child: SizedBox(
+        height: preferredSize.height,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            TweenAnimationBuilder<double>(
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.easeOutCubic,
+              tween: Tween<double>(begin: 0, end: comHoverNoBotao ? 1 : 0),
+              builder: (context, intensidade, child) {
+                return ClipPath(
+                  clipper: _DistorcaoAppBarClipper(intensidade: intensidade),
+                  child: child,
+                );
+              },
+              child: Container(
+                height: preferredSize.height,
+                color: corPrincipal,
+              ),
+            ),
+
+            Positioned(
+              left: 18,
+              top: topoTitulo,
+              child: const Text(
+                'MyTask App',
+                style: TextStyle(
+                  color: corTexto,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              right: 18,
+              top: topoBotao,
+              child: MouseRegion(
+                onEnter: (_) => aoEntrarNoBotao(),
+                onExit: (_) => aoSairDoBotao(),
+                child: AnimatedScale(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOut,
+                  scale: comHoverNoBotao ? 1.08 : 1,
+                  child: FloatingActionButton(
+                    onPressed: aoPressionarBotao,
+                    backgroundColor: corPrincipal,
+                    foregroundColor: Colors.white,
+                    elevation: comHoverNoBotao ? 8 : 4,
+                    shape: const CircleBorder(
+                      side: BorderSide(color: corTexto, width: 2),
+                    ),
+                    child: const Icon(Icons.add),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
+  }
+}
+
+class _DistorcaoAppBarClipper extends CustomClipper<Path> {
+  const _DistorcaoAppBarClipper({required this.intensidade});
+
+  final double intensidade;
+
+  @override
+  Path getClip(Size size) {
+    final double linhaBase = size.height - 24 - (10 * intensidade);
+    final double inicioDistorcao = size.width - 112;
+    final double centroDistorcao = size.width - 46;
+    final double fundoDistorcao = size.height - 4;
+
+    return Path()
+      ..lineTo(0, linhaBase)
+      ..quadraticBezierTo(
+        size.width * 0.35,
+        linhaBase + (4 * intensidade),
+        inicioDistorcao,
+        linhaBase,
+      )
+      ..cubicTo(
+        centroDistorcao - 42,
+        linhaBase,
+        centroDistorcao - 34,
+        linhaBase + ((fundoDistorcao - linhaBase) * intensidade),
+        centroDistorcao,
+        linhaBase + ((fundoDistorcao - linhaBase) * intensidade),
+      )
+      ..cubicTo(
+        centroDistorcao + 34,
+        linhaBase + ((fundoDistorcao - linhaBase) * intensidade),
+        centroDistorcao + 42,
+        linhaBase,
+        size.width,
+        linhaBase,
+      )
+      ..lineTo(size.width, 0)
+      ..close();
+  }
+
+  @override
+  bool shouldReclip(_DistorcaoAppBarClipper oldClipper) {
+    return oldClipper.intensidade != intensidade;
   }
 }
